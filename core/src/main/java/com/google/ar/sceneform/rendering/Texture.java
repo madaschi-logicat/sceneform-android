@@ -59,7 +59,7 @@ public class Texture {
             .register(this, new CleanupCallback(textureData));
   }
 
-  Sampler getSampler() {
+  public Sampler getSampler() {
     return Preconditions.checkNotNull(textureData).getSampler();
   }
 
@@ -68,7 +68,7 @@ public class Texture {
    *
    * @hide
    */
-  com.google.android.filament.Texture getFilamentTexture() {
+  public com.google.android.filament.Texture getFilamentTexture() {
     return Preconditions.checkNotNull(textureData).getFilamentTexture();
   }
 
