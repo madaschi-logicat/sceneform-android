@@ -27,15 +27,22 @@ import com.google.ar.core.TrackingState;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.ArSceneView;
 import com.google.ar.sceneform.FrameTime;
+import com.google.ar.sceneform.HitTestResult;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.NodeParent;
 import com.google.ar.sceneform.Scene;
+import com.google.ar.sceneform.collision.Ray;
+import com.google.ar.sceneform.collision.RayHit;
 import com.google.ar.sceneform.math.MathHelper;
 import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.utilities.Preconditions;
+
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Manipulates the position of a {@link BaseTransformableNode} using a {@link
@@ -48,6 +55,7 @@ public class TranslationController extends BaseTransformationController<DragGest
   @Nullable private Quaternion desiredLocalRotation;
 
   private final Vector3 initialForwardInLocal = new Vector3();
+  private Vector3 initialOffset = null;
 
   private EnumSet<Plane.Type> allowedPlaneTypes = EnumSet.allOf(Plane.Type.class);
 
@@ -113,25 +121,42 @@ public class TranslationController extends BaseTransformationController<DragGest
     return true;
   }
 
-  @Override
-  public void onContinueTransformation(DragGesture gesture) {
-    Scene scene = getTransformableNode().getScene();
-    if (scene == null) {
-      return;
+  private boolean isARMode(Scene scene) {
+    return scene.getView() instanceof ArSceneView;
+  }
+
+  private List<HitResult> arHitTest(DragGesture gesture, Scene scene) {
+    if (scene.getView() instanceof ArSceneView) {
+      Frame frame = ((ArSceneView) scene.getView()).getArFrame();
+      if (frame == null) {
+        return new ArrayList<>();
+      }
+
+      Camera arCamera = frame.getCamera();
+      if (arCamera.getTrackingState() != TrackingState.TRACKING) {
+        return new ArrayList<>();
+      }
+      Vector3 position = gesture.getPosition();
+      return frame.hitTest(position.x, position.y);
+
     }
 
-    Frame frame = ((ArSceneView) scene.getView()).getArFrame();
-    if (frame == null) {
-      return;
-    }
+    return new ArrayList<>();
+  }
 
-    Camera arCamera = frame.getCamera();
-    if (arCamera.getTrackingState() != TrackingState.TRACKING) {
-      return;
-    }
-
+  private Optional<RayHit> viewerHitTest(DragGesture gesture, Scene scene) {
+    com.google.ar.sceneform.Camera camera = scene.getView().getScene().getCamera();
+    com.google.ar.sceneform.collision.Plane target = new com.google.ar.sceneform.collision.Plane(getTransformableNode().getWorldPosition(), camera.getForward().negated());
     Vector3 position = gesture.getPosition();
-    List<HitResult> hitResultList = frame.hitTest(position.x, position.y);
+    Ray ray = camera.screenPointToRay(position.x, position.y);
+    RayHit hitResult = new RayHit();
+    if (target.rayIntersection(ray, hitResult)) {
+      return Optional.of(hitResult);
+    }
+    return Optional.empty();
+  }
+
+  private boolean arTransformation(List<HitResult> hitResultList) {
     for (int i = 0; i < hitResultList.size(); i++) {
       HitResult hit = hitResultList.get(i);
       Trackable trackable = hit.getTrackable();
@@ -145,24 +170,66 @@ public class TranslationController extends BaseTransformationController<DragGest
           if (parent != null && desiredLocalPosition != null && desiredLocalRotation != null) {
             desiredLocalPosition = parent.worldToLocalPoint(desiredLocalPosition);
             desiredLocalRotation =
-                Quaternion.multiply(
-                    parent.getWorldRotation().inverted(),
-                    Preconditions.checkNotNull(desiredLocalRotation));
+                    Quaternion.multiply(
+                            parent.getWorldRotation().inverted(),
+                            Preconditions.checkNotNull(desiredLocalRotation));
           }
 
           desiredLocalRotation =
-              calculateFinalDesiredLocalRotation(Preconditions.checkNotNull(desiredLocalRotation));
+                  calculateFinalDesiredLocalRotation(Preconditions.checkNotNull(desiredLocalRotation));
           lastArHitResult = hit;
-          break;
+          return true;
         }
       }
     }
+    return false;
+  }
+
+  private boolean viewTransformation(RayHit hitResult, Vector3 planeNormal) {
+    desiredLocalPosition = hitResult.getPoint();
+    desiredLocalRotation = Quaternion.lookRotation(Vector3.forward(), planeNormal);
+    Node parent = getTransformableNode().getParentNode();
+    if (parent != null && desiredLocalPosition != null && desiredLocalRotation != null) {
+      Vector3 desiredWorldPosition = parent.worldToLocalPoint(desiredLocalPosition);
+      if (initialOffset == null) {
+        initialOffset = Vector3.subtract(getTransformableNode().getWorldPosition(), desiredWorldPosition);
+      }
+      desiredLocalPosition = parent.worldToLocalPoint(Vector3.add(desiredWorldPosition, initialOffset));
+      desiredLocalRotation =
+              Quaternion.multiply(
+                      parent.getWorldRotation().inverted(),
+                      Preconditions.checkNotNull(desiredLocalRotation));
+    }
+
+    desiredLocalRotation =
+            calculateFinalDesiredLocalRotation(Preconditions.checkNotNull(desiredLocalRotation));
+    return true;
+  }
+
+  @Override
+  public void onContinueTransformation(DragGesture gesture) {
+    Scene scene = getTransformableNode().getScene();
+    if (scene == null) {
+      return;
+    }
+
+    if (isARMode(scene)) {
+      List<HitResult> hitResultList = arHitTest(gesture, scene);
+      arTransformation(hitResultList);
+    } else {
+      com.google.ar.sceneform.Camera camera = scene.getView().getScene().getCamera();
+      viewerHitTest(gesture, scene).map(rayHit -> viewTransformation(rayHit, camera.getForward().negated()));
+    }
+
   }
 
   @Override
   public void onEndTransformation(DragGesture gesture) {
     HitResult hitResult = lastArHitResult;
     if (hitResult == null) {
+      desiredLocalPosition = null;
+      desiredLocalRotation = null;
+      initialOffset = null;
       return;
     }
 
