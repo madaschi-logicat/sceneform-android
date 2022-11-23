@@ -538,7 +538,7 @@ final class MaterialParameters {
     @Override
     void applyTo(MaterialInstance materialInstance) {
       materialInstance.setParameter(
-          name, texture.getFilamentTexture(), convertTextureSampler(texture.getSampler()));
+          name, texture.getFilamentTexture(), texture.getFilamentSampler());
     }
 
     @Override
@@ -601,7 +601,7 @@ final class MaterialParameters {
   }
 
 
-  private static com.google.android.filament.TextureSampler convertTextureSampler(
+  public static com.google.android.filament.TextureSampler convertTextureSampler(
       Texture.Sampler sampler) {
     com.google.android.filament.TextureSampler convertedSampler =
         new com.google.android.filament.TextureSampler();

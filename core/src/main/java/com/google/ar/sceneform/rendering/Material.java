@@ -215,7 +215,7 @@ public class Material {
         }
     }
 
-    com.google.android.filament.MaterialInstance getFilamentMaterialInstance() {
+    public com.google.android.filament.MaterialInstance getFilamentMaterialInstance() {
         // Filament Material Instance is only set to null when it is disposed or destroyed, so any
         // usage after that point is an internal error.
         if (!internalMaterialInstance.isValidInstance()) {

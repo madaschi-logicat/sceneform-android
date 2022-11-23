@@ -7,6 +7,8 @@ import android.net.Uri;
 import android.os.Build;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+
+import com.google.android.filament.TextureSampler;
 import com.google.android.filament.android.TextureHelper;
 
 import com.google.ar.core.annotations.UsedByNative;
@@ -61,6 +63,10 @@ public class Texture {
 
   public Sampler getSampler() {
     return Preconditions.checkNotNull(textureData).getSampler();
+  }
+
+  public TextureSampler getFilamentSampler() {
+    return MaterialParameters.convertTextureSampler(getSampler());
   }
 
   /**
