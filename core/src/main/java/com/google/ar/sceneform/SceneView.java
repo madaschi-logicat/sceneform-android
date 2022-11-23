@@ -187,6 +187,7 @@ public class SceneView extends SurfaceView implements Choreographer.FrameCallbac
     public void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
 
+        if (isInEditMode()) return;
         int width = right - left;
         int height = bottom - top;
         Preconditions.checkNotNull(renderer).setDesiredSize(width, height);
@@ -365,6 +366,8 @@ public class SceneView extends SurfaceView implements Choreographer.FrameCallbac
             Log.w(TAG, "SceneView already initialized.");
             return;
         }
+
+        if (isInEditMode()) return;
 
         if (!AndroidPreconditions.isMinAndroidApiLevel()) {
             Log.e(TAG, "Sceneform requires Android N or later");
