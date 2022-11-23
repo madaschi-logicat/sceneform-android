@@ -55,8 +55,10 @@ public class PlaneRenderer {
      */
     private static final float BASE_UV_SCALE = 8.0f;
 
-    private static final float DEFAULT_TEXTURE_WIDTH = 293;
-    private static final float DEFAULT_TEXTURE_HEIGHT = 513;
+    //private static final float DEFAULT_TEXTURE_WIDTH = 293;
+    //private static final float DEFAULT_TEXTURE_HEIGHT = 513;
+    private static final float DEFAULT_TEXTURE_WIDTH = 512;
+    private static final float DEFAULT_TEXTURE_HEIGHT = 445;
 
     private static final float SPOTLIGHT_RADIUS = .5f;
 
