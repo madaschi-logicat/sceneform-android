@@ -118,6 +118,8 @@ public class ArSceneView extends SceneView {
         // SceneView will initialize the scene, renderer, and camera.
         super.initialize();
 
+        if (isInEditMode()) return;
+
         Renderer renderer = Preconditions.checkNotNull(getRenderer());
         renderer.enablePerformanceMode();
         initializeAr();
